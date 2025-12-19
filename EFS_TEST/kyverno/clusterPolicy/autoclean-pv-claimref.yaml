@@ -1,0 +1,26 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: pv-remove-claimref-on-released
+spec:
+  background: true
+  rules:
+  - name: remove-claimref-on-released
+    match:
+      any:
+      - resources:
+          kinds:
+          - PersistentVolume
+    preconditions:
+      all:
+      - key: "{{ request.object.status.phase }}"
+        operator: Equals
+        value: Released
+    mutate:
+      mutateExistingOnPolicyUpdate: true
+      targets:
+      - apiVersion: v1
+        kind: PersistentVolume
+      patchesJson6902: |-
+        - op: remove
+          path: /spec/claimRef

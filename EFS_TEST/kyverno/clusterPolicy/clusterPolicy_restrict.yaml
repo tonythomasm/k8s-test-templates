@@ -1,0 +1,81 @@
+# apiVersion: kyverno.io/v1
+# kind: ClusterPolicy
+# metadata:
+#   name: restrict-pv-binding-by-namespace
+# spec:
+#   validationFailureAction: enforce
+#   background: false
+#   rules:
+#     - name: restrict-pv-binding-by-namespace
+#       match:
+#         resources:
+#           kinds:
+#             - PersistentVolume
+
+#       preconditions:
+#         # Only run during UPDATE (PVC binding)
+#         - key: "{{ request.operation }}"
+#           operator: Equals
+#           value: UPDATE
+
+#         # Only when claimRef.namespace exists (binding)
+#         - key: "{{ request.object.spec.claimRef.namespace }}"
+#           operator: NotEquals
+#           value: ""
+
+#         # Only if allowed-namespace label exists
+#         - key: "{{ request.object.metadata.labels.\"pv.kubernetes.io/allowed-namespace\" }}"
+#           operator: NotEquals
+#           value: ""
+
+#       validate:
+#         message: >-
+#           PV can only bind to PVCs in namespace
+#           '{{ request.object.metadata.labels."pv.kubernetes.io/allowed-namespace" }}'
+#         pattern:
+#           spec:
+#             claimRef:
+#               namespace: "{{ request.object.metadata.labels.\"pv.kubernetes.io/allowed-namespace\" }}"
+
+
+
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-pv-binding-by-namespace
+spec:
+  validationFailureAction: enforce
+  background: false
+  rules:
+  - name: restrict-pv-binding-by-namespace
+    match:
+      resources:
+        kinds:
+        - PersistentVolume
+
+    preconditions:
+      all:
+      # Only during UPDATE (binding)
+      - key: "{{ request.operation }}"
+        operator: Equals
+        value: UPDATE
+
+      # Only when claimRef.namespace exists (SAFE)
+      - key: "{{ request.object.spec.claimRef.namespace || '' }}"
+        operator: NotEquals
+        value: ""
+
+      # Only when allowed-namespace label exists
+      - key: "{{ request.object.metadata.labels.\"pv.kubernetes.io/allowed-namespace\" || '' }}"
+        operator: NotEquals
+        value: ""
+
+    validate:
+      message: >-
+        PV can only bind to PVCs in namespace
+        '{{ request.object.metadata.labels."pv.kubernetes.io/allowed-namespace" }}'
+      pattern:
+        spec:
+          claimRef:
+            namespace: "{{ request.object.metadata.labels.\"pv.kubernetes.io/allowed-namespace\" }}"

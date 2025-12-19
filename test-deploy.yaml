@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-deploy
+  name: test-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-deploy
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: test-deploy
+    spec:
+      containers:
+      - image: ubuntu
+        name: ubuntu
+        command: ["/bin/sh", "-c", "sleep 50000"]
+        resources: {}
+status: {}

@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: validate-app
+  namespace: ns1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: validate-app
+  template:
+    metadata:
+      labels:
+        app: validate-app
+        "eks.amazonaws.com/fargate-profile": "test-tony-eks-fp-ns1"
+    spec:
+      schedulerName: fargate-scheduler
+      tolerations:
+      - key: "eks.amazonaws.com/compute-type"
+        operator: "Equal"
+        value: "fargate"
+        effect: "NoSchedule"
+      # If running on Fargate, EFS mounts are supported. If on node groups, ensure efs-csi-driver installed.
+      containers:
+      - name: validate-app
+        image: busybox
+        command: ["sh", "-c", "sleep 50000"]
+        volumeMounts:
+        - name: efs
+          mountPath: /data
+      initContainers:
+      - name: init-mkdir
+        image: busybox
+        command:
+          - sh
+          - -c
+          - |
+            set -e
+            mkdir -p /data/pods/$(hostname)
+            # optionally set permissions if needed
+            chown -R 1001:1001 /data/pods/$(hostname)
+        securityContext:
+          runAsUser: 1001       # MUST match access point POSIX uid
+        volumeMounts:
+        - name: efs
+          mountPath: /data
+      volumes:
+      - name: efs
+        persistentVolumeClaim:
+          claimName: pvc-ns1-1

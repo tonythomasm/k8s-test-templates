@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-ns2-delete
+  namespace: ns2
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Mi
+  # match storageClassName with PV above (leave blank to match PV with no storage class)
+  storageClassName: ""
+  volumeName: pv-ns1

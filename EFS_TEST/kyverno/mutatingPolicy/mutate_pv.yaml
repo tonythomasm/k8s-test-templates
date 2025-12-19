@@ -1,0 +1,29 @@
+apiVersion: policies.kyverno.io/v1alpha1
+kind: MutatingPolicy
+metadata:
+  name: remove-claimref-from-released-pv
+spec:
+  # Enable background mutation so this works on existing PVs
+  evaluation:
+    admission:
+      enabled: false
+    mutateExisting:
+      enabled: true
+
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["persistentvolumes"]
+        # Only consider updates to PVs (not just creation)
+        operations: ["UPDATE"]
+
+  mutations:
+  # - name: remove-claimref
+  - patchType: JSONPatch
+    jsonPatch:
+      expression: >
+        object.status.phase == "Released" && has(object.spec.claimRef) ?
+        [
+          patch.remove("/spec/claimRef")
+        ] : []

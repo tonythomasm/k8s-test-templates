@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: ns1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+        "eks.amazonaws.com/fargate-profile": "test-tony-eks-fp-ns1"
+    spec:
+      schedulerName: fargate-scheduler
+      tolerations:
+      - key: "eks.amazonaws.com/compute-type"
+        operator: "Equal"
+        value: "fargate"
+        effect: "NoSchedule"
+      # If running on Fargate, EFS mounts are supported. If on node groups, ensure efs-csi-driver installed.
+      containers:
+      - name: app
+        image: busybox
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        command: ["sh", "-c", "echo 'test dummy data from pod1' > /data/test1.txt && sleep 50000"]
+        # command: ["sh", "-c", "ls -R > /data/test1.txt && sleep 50000"]
+        volumeMounts:
+        - name: efs
+          mountPath: /data
+          # subPath ensures each pod uses its own directory
+          subPathExpr: pods/$(MY_POD_NAME)
+      initContainers:
+      - name: init-mkdir
+        image: busybox
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        command:
+          - sh
+          - -c
+          - |
+            set -e
+            mkdir -p /data/pods/${MY_POD_NAME}
+            chown -R 1001:1001 /data/pods/${MY_POD_NAME}
+        # securityContext:
+        #   runAsUser: 1001       # MUST match access point POSIX uid
+        volumeMounts:
+        - name: efs
+          mountPath: /data
+      volumes:
+      - name: efs
+        persistentVolumeClaim:
+          claimName: pvc-ns1-1
